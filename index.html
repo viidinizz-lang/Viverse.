@@ -35,6 +35,8 @@ html,body{
 }
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .3s;}
 .screen.active{opacity:1;pointer-events:all;}
+/* Garante que o splash aparece antes do JS carregar */
+#screen-splash{opacity:1;pointer-events:all;}
 
 /* SPLASH */
 #splash{background:radial-gradient(ellipse at 60% 30%,var(--mid) 0%,var(--bg) 65%);align-items:center;justify-content:center;}
@@ -369,7 +371,14 @@ fbAuth.onAuthStateChanged(async (user) => {
   fbUser = user;
   if (user) {
     await fbLoad(user.uid);
-    if (typeof goTo === 'function') goTo('home'); else if (typeof renderHome === 'function') renderHome();
+    if (typeof goTo === 'function') goTo('home');
+  } else {
+    // Nao logado: mostra splash normalmente
+    const splash = document.getElementById('screen-splash');
+    if (splash && !splash.classList.contains('active')) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      splash.classList.add('active');
+    }
   }
 });
 </script>
