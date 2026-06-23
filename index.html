@@ -82,12 +82,21 @@
   };
 
   // ── Auth listener ───────────────────────────────────────────────
+  // Timeout: se Firebase demorar mais de 3s, mostra splash mesmo assim
+  const splashTimeout = setTimeout(() => {
+    const splash = document.getElementById('screen-splash');
+    if (splash) splash.classList.add('active');
+    const loading = document.getElementById('splash-loading');
+    if (loading) loading.style.display = 'none';
+    const btn = document.getElementById('btn-anonimo');
+    if (btn) btn.disabled = false;
+  }, 3000);
+
   onAuthStateChanged(auth, async (user) => {
+    clearTimeout(splashTimeout);
     currentUser = user;
     if (user) {
-      // Carrega dados do Firestore e aí vai pra home
       await loadUserData(user.uid);
-      // Patch no S.set para sincronizar automaticamente
       const origSet = window.S?.set;
       if (origSet) {
         window.S.set = function(k, v) {
@@ -96,6 +105,14 @@
         };
       }
       if (typeof window._postLogin === 'function') window._postLogin();
+    } else {
+      // Nao logado: mostra splash
+      const splash = document.getElementById('screen-splash');
+      if (splash) splash.classList.add('active');
+      const loading = document.getElementById('splash-loading');
+      if (loading) loading.style.display = 'none';
+      const btn = document.getElementById('btn-anonimo');
+      if (btn) btn.disabled = false;
     }
   });
 </script>
