@@ -19,18 +19,18 @@
   --soft:#F0F5EC;--card:#ffffff;
 }
 html,body{
-  height:100%;min-height:100vh;min-height:-webkit-fill-available;
+  height:100%;min-height:100vh;
   font-family:'DM Sans',sans-serif;background:#0d0d0d;
-  display:flex;align-items:center;justify-content:center;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
 }
 .phone{
-  width:100%;max-width:430px;
-  height:100vh;height:-webkit-fill-available;max-height:932px;
+  width:100%;
+  height:100vh;height:100dvh;
   overflow:hidden;position:relative;background:var(--soft);
   display:flex;flex-direction:column;
 }
 @media(min-width:500px){
-  .phone{width:390px;height:844px;border-radius:50px;
+  .phone{width:390px;height:844px;max-height:844px;border-radius:50px;
     box-shadow:0 40px 80px rgba(0,0,0,.8),inset 0 0 0 1.5px rgba(255,255,255,.1);}
 }
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .3s;}
@@ -323,6 +323,56 @@ html,body{
 /* SLIDER */
 input[type=range]{width:100%;accent-color:var(--accent);}
 </style>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAiWqPmTfKvFQaAQPvkvzrlA-oQcTMNb6o",
+  authDomain: "viverse-4de7d.firebaseapp.com",
+  projectId: "viverse-4de7d",
+  storageBucket: "viverse-4de7d.firebasestorage.app",
+  messagingSenderId: "701073498738",
+  appId: "1:701073498738:web:2d68b0ce6ab3d9ebf8d8eb"
+};
+firebase.initializeApp(firebaseConfig);
+const fbAuth = firebase.auth();
+const fbDb = firebase.firestore();
+let fbUser = null;
+let fbSaveTimer = null;
+
+function fbSave() {
+  if (!fbUser) return;
+  clearTimeout(fbSaveTimer);
+  fbSaveTimer = setTimeout(async () => {
+    const data = {};
+    Object.keys(localStorage).filter(k => k.startsWith('viv_')).forEach(k => {
+      try { data[k.replace('viv_','')] = JSON.parse(localStorage.getItem(k)); } catch(e){}
+    });
+    try { await fbDb.collection('users').doc(fbUser.uid).set(data, {merge:true}); } catch(e){}
+  }, 1500);
+}
+
+async function fbLoad(uid) {
+  try {
+    const snap = await fbDb.collection('users').doc(uid).get();
+    if (snap.exists) {
+      Object.entries(snap.data()).forEach(([k,v]) => {
+        try { localStorage.setItem('viv_'+k, JSON.stringify(v)); } catch(e){}
+      });
+    }
+  } catch(e){}
+}
+
+fbAuth.onAuthStateChanged(async (user) => {
+  fbUser = user;
+  if (user) {
+    await fbLoad(user.uid);
+    if (typeof goTo === 'function') goTo('home');
+  }
+});
+</script>
 </head>
 <body style="min-height:100vh;display:flex;align-items:center;justify-content:center;">
 <div class="phone" id="app">
@@ -334,8 +384,8 @@ input[type=range]{width:100%;accent-color:var(--accent);}
   <p class="splash-name">Viverse<span>.</span></p>
   <p class="splash-tag">o seu espaço, do seu jeito</p>
   <div class="splash-btns">
-    <button class="btn-primary" onclick="goTo('home')">Entrar</button>
-    <div class="btn-google" onclick="goTo('home')">
+    <button class="btn-primary" onclick="fbAuth.signInAnonymously().catch(e=>alert(e.message))">Entrar</button>
+    <div class="btn-google" onclick="fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>alert(e.message))">
       <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -776,6 +826,9 @@ input[type=range]{width:100%;accent-color:var(--accent);}
       <button class="btn-cancel" onclick="closeModal('modal-perfil')">Cancelar</button>
       <button class="btn-save" onclick="salvarPerfil()">Salvar</button>
     </div>
+    <div style="margin-top:12px;text-align:center;">
+      <button onclick="if(confirm('Sair?')){fbAuth.signOut();localStorage.clear();location.reload();}" style="background:none;border:none;font-size:11px;color:#E87070;cursor:pointer;">🚪 Sair da conta</button>
+    </div>
   </div>
 </div>
 
@@ -1031,7 +1084,7 @@ input[type=range]{width:100%;accent-color:var(--accent);}
 // ══ STORAGE ══
 const S = {
   get(k){try{const v=localStorage.getItem('viv_'+k);return v?JSON.parse(v):null;}catch(e){return null;}},
-  set(k,v){try{localStorage.setItem('viv_'+k,JSON.stringify(v));}catch(e){}}
+  set(k,v){try{localStorage.setItem('viv_'+k,JSON.stringify(v));if(typeof fbSave==='function')fbSave();}catch(e){}}
 };
 
 // ══ ESTADO ══
