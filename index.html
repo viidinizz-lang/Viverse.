@@ -35,8 +35,6 @@ html,body{
 }
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .3s;}
 .screen.active{opacity:1;pointer-events:all;}
-/* Garante que o splash aparece antes do JS carregar */
-#screen-splash{opacity:1;pointer-events:all;}
 
 /* SPLASH */
 #splash{background:radial-gradient(ellipse at 60% 30%,var(--mid) 0%,var(--bg) 65%);align-items:center;justify-content:center;}
@@ -325,63 +323,6 @@ html,body{
 /* SLIDER */
 input[type=range]{width:100%;accent-color:var(--accent);}
 </style>
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyAiWqPmTfKvFQaAQPvkvzrlA-oQcTMNb6o",
-  authDomain: "viverse-4de7d.firebaseapp.com",
-  projectId: "viverse-4de7d",
-  storageBucket: "viverse-4de7d.firebasestorage.app",
-  messagingSenderId: "701073498738",
-  appId: "1:701073498738:web:2d68b0ce6ab3d9ebf8d8eb"
-};
-firebase.initializeApp(firebaseConfig);
-const fbAuth = firebase.auth();
-const fbDb = firebase.firestore();
-let fbUser = null;
-let fbSaveTimer = null;
-
-function fbSave() {
-  if (!fbUser) return;
-  clearTimeout(fbSaveTimer);
-  fbSaveTimer = setTimeout(async () => {
-    const data = {};
-    Object.keys(localStorage).filter(k => k.startsWith('viv_')).forEach(k => {
-      try { data[k.replace('viv_','')] = JSON.parse(localStorage.getItem(k)); } catch(e){}
-    });
-    try { await fbDb.collection('users').doc(fbUser.uid).set(data, {merge:true}); } catch(e){}
-  }, 1500);
-}
-
-async function fbLoad(uid) {
-  try {
-    const doc = await fbDb.collection('users').doc(uid).get();
-    if (doc.exists) {
-      Object.entries(doc.data()).forEach(([k,v]) => {
-        try { localStorage.setItem('viv_'+k, JSON.stringify(v)); } catch(e){}
-      });
-    }
-  } catch(e){}
-}
-
-fbAuth.onAuthStateChanged(async (user) => {
-  fbUser = user;
-  if (user) {
-    await fbLoad(user.uid);
-    if (typeof goTo === 'function') goTo('home');
-  } else {
-    // Nao logado: mostra splash normalmente
-    const splash = document.getElementById('screen-splash');
-    if (splash && !splash.classList.contains('active')) {
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      splash.classList.add('active');
-    }
-  }
-});
-</script>
 </head>
 <body style="min-height:100vh;display:flex;align-items:center;justify-content:center;">
 <div class="phone" id="app">
@@ -393,8 +334,8 @@ fbAuth.onAuthStateChanged(async (user) => {
   <p class="splash-name">Viverse<span>.</span></p>
   <p class="splash-tag">o seu espaço, do seu jeito</p>
   <div class="splash-btns">
-    <button class="btn-primary" onclick="fbAuth.signInAnonymously().catch(e=>alert(e.message))">Entrar</button>
-    <div class="btn-google" onclick="fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>alert(e.message))">
+    <button class="btn-primary" onclick="goTo('home')">Entrar</button>
+    <div class="btn-google" onclick="goTo('home')">
       <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -835,9 +776,6 @@ fbAuth.onAuthStateChanged(async (user) => {
       <button class="btn-cancel" onclick="closeModal('modal-perfil')">Cancelar</button>
       <button class="btn-save" onclick="salvarPerfil()">Salvar</button>
     </div>
-    <div style="margin-top:12px;text-align:center;">
-      <button onclick="if(confirm('Sair da conta?')){fbAuth.signOut();localStorage.clear();location.reload();}" style="background:none;border:none;font-size:11px;color:#E87070;cursor:pointer;opacity:.8;">🚪 Sair da conta</button>
-    </div>
   </div>
 </div>
 
@@ -1093,7 +1031,7 @@ fbAuth.onAuthStateChanged(async (user) => {
 // ══ STORAGE ══
 const S = {
   get(k){try{const v=localStorage.getItem('viv_'+k);return v?JSON.parse(v):null;}catch(e){return null;}},
-  set(k,v){try{localStorage.setItem('viv_'+k,JSON.stringify(v));if(typeof fbSave==='function')fbSave();}catch(e){}}
+  set(k,v){try{localStorage.setItem('viv_'+k,JSON.stringify(v));}catch(e){}}
 };
 
 // ══ ESTADO ══
