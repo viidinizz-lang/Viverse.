@@ -1,7 +1,7 @@
 {
-  "name": "Viverse.",
-  "short_name": "Viverse",
-  "description": "Viverse. — o seu espaço, do seu jeito.",
+  "name": "Viverse Bloom",
+  "short_name": "Bloom",
+  "description": "Viverse Bloom — seu app pessoal mobile.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
