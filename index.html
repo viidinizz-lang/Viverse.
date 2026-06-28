@@ -26,8 +26,15 @@
   --navy: #1C2B1A;
 }
 
-html, body {
+html {
   height: 100%;
+  height: -webkit-fill-available;
+}
+body {
+  height: 100%;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  min-height: 100dvh;
   font-family: 'DM Sans', sans-serif;
   background: #0d0d0d;
   display: flex;
@@ -40,7 +47,8 @@ html, body {
 .phone {
   width: 100%;
   max-width: 430px;
-  height: 100%;
+  height: 100vh;
+  height: 100dvh;
   max-height: 932px;
   overflow: hidden;
   position: relative;
@@ -1690,4 +1698,4 @@ if ('serviceWorker' in navigator) {
 
   window.openLinkForm=function(id){const l=db.links.find(x=>x.id===id)||{}; form(id?'Editar link':'Novo link', input('title','Nome do link','text',l.title||'')+input('category','Categoria','text',l.category||'')+input('url','URL','url',l.url||''), fd=>{const obj={id:id||uid(),title:fd.get('title'),category:fd.get('category'),url:fd.get('url')}; db.links=id?db.links.map(x=>x.id===id?obj:x):[obj,...db.links];}, id?`<button type="button" class="bloom-btn ghost" onclick="deleteLink('${id}')">Apagar</button>`:'');};
   window.deleteLink=function(id){if(confirm('Apagar link?')){db.links=db.links.filter(x=>x.id!==id); closeModal(); save();}};
-  function renderLinks(){const el=$('link-list'); if(!el)return; el.innerHTML=db.links.map(l=>`<div class="link-card" onclick="openLinkForm('${l.id}')"><div class="link-icon">🔗</div><div style="flex:1"><div class="link-title">${esc(l.title|
+  function renderLinks(){const el=$('link-list'); if(!el)return; el.innerHTML=db.links.m
