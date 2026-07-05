@@ -1778,7 +1778,7 @@ if ('serviceWorker' in navigator) {
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfigBloom = {
@@ -1839,8 +1839,30 @@ if(configured()){
   const app=initializeApp(firebaseConfigBloom); authBloom=getAuth(app); dbBloom=getFirestore(app);
   window._realSignInGoogleBloom=async()=>{
     if(window.clearSyncError) window.clearSyncError();
-    try{ sessionStorage.setItem('viverse_tentando_login','1'); await signInWithRedirect(authBloom,new GoogleAuthProvider()); }
-    catch(err){ sessionStorage.removeItem('viverse_tentando_login'); console.error('Erro ao iniciar login Google:', err); alert('Não consegui abrir o login do Google. Verifique sua conexão e tente de novo.\n\nDetalhe técnico: '+(err&&err.code||err&&err.message||'desconhecido')); }
+    try{
+      const result = await signInWithPopup(authBloom, new GoogleAuthProvider());
+      if(result && result.user){
+        alert('Login OK: '+result.user.email+'. Sincronizando...');
+        if(window.goTo) window.goTo('home');
+      }
+    }catch(err){
+      console.error('Erro no login por popup:', err);
+      const codigo=(err&&err.code)||'';
+      // se o popup foi bloqueado ou nao suportado, tenta redirect como reserva
+      if(codigo==='auth/popup-blocked' || codigo==='auth/operation-not-supported-in-this-environment' || codigo==='auth/cancelled-popup-request'){
+        try{
+          sessionStorage.setItem('viverse_tentando_login','1');
+          await signInWithRedirect(authBloom, new GoogleAuthProvider());
+        }catch(err2){
+          sessionStorage.removeItem('viverse_tentando_login');
+          alert('Não consegui abrir o login do Google (popup e redirecionamento falharam).\n\nCódigo: '+((err2&&err2.code)||codigo||'desconhecido'));
+        }
+      } else if(codigo==='auth/popup-closed-by-user'){
+        // usuaria fechou a janela de propósito, nao precisa de alerta de erro
+      } else {
+        alert('Não consegui fazer login com o Google.\n\nCódigo do erro: '+(codigo||(err&&err.message)||'desconhecido')+'\n\nMande esse código exato pra gente resolver.');
+      }
+    }
   };
   window._firebaseAuthReady=true;
   window.isSignedInBloom=()=>!!userBloom;
@@ -3858,4 +3880,4 @@ window.addEventListener('load',()=>{document.querySelectorAll('.btn-google').for
 </script>
 
 </body>
-</html> 
+</html>
