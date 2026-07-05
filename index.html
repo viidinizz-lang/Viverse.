@@ -1295,7 +1295,7 @@ body {
   <!-- ══════════════ VIVERSE BLOOM: PERFIL ══════════════ -->
   <div class="screen" id="screen-perfil">
     <div class="sec-hdr" data-letter="V"><div class="back-btn" onclick="goTo('mais')">← Mais</div><p class="sec-hdr-sub">conta</p><p class="sec-hdr-title">Meu Perfil 👤</p></div>
-    <div class="scroll"><div class="card"><div id="profile-box"></div><div class="bloom-actions"><label class="bloom-btn">📸 Foto<input type="file" accept="image/*" style="display:none" onchange="setProfilePhoto(this.files[0])"></label><button class="bloom-btn ghost" onclick="editProfileName()">Editar nome</button></div></div><div class="card"><p class="clabel">☁️ Sincronização</p><p class="bloom-note">Para sincronizar celular e tablet, cole sua configuração do Firebase no final do HTML. Depois toque em entrar com Google.</p><div id="sync-status" class="sync-status">Status: aguardando configuração do Firebase</div><div class="bloom-actions"><button class="bloom-btn" onclick="signInGoogleBloom()">Entrar com Google</button><button class="bloom-btn ghost" onclick="forceCloudSaveBloom()">Forçar backup</button></div></div></div>
+    <div class="scroll"><div class="card"><div id="profile-box"></div><div class="bloom-actions"><label class="bloom-btn">📸 Foto<input type="file" accept="image/*" style="display:none" onchange="setProfilePhoto(this.files[0])"></label><button class="bloom-btn ghost" onclick="editProfileName()">Editar nome</button></div></div></div>
     <div class="nav"><div class="ni" onclick="goTo('home')"><span class="ni-icon">🌤️</span><span class="ni-text">Início</span></div><div class="ni" onclick="goTo('biblioteca')"><span class="ni-icon">📚</span><span class="ni-text">Livros</span></div><div class="ni" onclick="goTo('pets')"><span class="ni-icon">🐱</span><span class="ni-text">Pets</span></div><div class="ni on" onclick="goTo('perfil')"><span class="ni-icon">👤</span><span class="ni-text">Perfil</span><div class="ndot"></div></div><div class="ni" onclick="goTo('mais')"><span class="ni-icon">···</span><span class="ni-text">Mais</span></div></div>
   </div>
 
@@ -1319,6 +1319,13 @@ window.signInGoogleBloom = function(){
     window._realSignInGoogleBloom();
   } else {
     alert('Ainda carregando a conexão com o Google (depende da sua internet). Aguarde 2-3 segundos e toque de novo em "Entrar com Google".');
+  }
+};
+window.signOutGoogleBloom = function(){
+  if(window._firebaseAuthReady && window._realSignOutGoogleBloom){
+    window._realSignOutGoogleBloom();
+  } else {
+    alert('Ainda carregando. Aguarde alguns segundos e toque de novo em "Sair da conta".');
   }
 };
 </script>
@@ -1771,7 +1778,7 @@ if ('serviceWorker' in navigator) {
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfigBloom = {
@@ -1813,9 +1820,14 @@ if(configured()){
   };
   window._firebaseAuthReady=true;
   window.isSignedInBloom=()=>!!userBloom;
+  window.signOutGoogleBloom=async()=>{
+    try{ await signOut(authBloom); if(window.renderSyncWarningBanner) window.renderSyncWarningBanner(); if(window.renderSyncStatus) window.renderSyncStatus(); }
+    catch(err){ console.error('Erro ao sair da conta:', err); alert('Não consegui sair da conta. Tente de novo.'); }
+  };
+  window._realSignOutGoogleBloom=window.signOutGoogleBloom;
   getRedirectResult(authBloom).catch(err=>{ console.error('Erro no retorno do login Google:', err); });
   onAuthStateChanged(authBloom,async u=>{
-    userBloom=u; if(!u){status('não logada'); if(window.renderSyncWarningBanner) window.renderSyncWarningBanner(); return;}
+    userBloom=u; if(!u){status('não logada'); if(window.renderSyncWarningBanner) window.renderSyncWarningBanner(); if(window.renderSyncStatus) window.renderSyncStatus(); return;}
     const splashAtiva=document.getElementById('screen-splash')?.classList.contains('active');
     if(splashAtiva && window.goTo) window.goTo('home');
     const el=document.getElementById('sync-status'); if(el) el.className='sync-status warn';
@@ -1829,6 +1841,7 @@ if(configured()){
     }
     await cloudSave();
     if(window.renderSyncWarningBanner) window.renderSyncWarningBanner();
+    if(window.renderSyncStatus) window.renderSyncStatus();
     const {onSnapshot}=await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
     onSnapshot(ref,docSnap=>{
       if(!docSnap.exists()||!docSnap.data()?.data||syncing) return;
@@ -1841,6 +1854,7 @@ if(configured()){
   });
 }else{
   window._realSignInGoogleBloom=()=>alert('Firebase não configurado — sincronização indisponível, dados salvos só neste aparelho.');
+  window.signOutGoogleBloom=()=>alert('Não há login ativo pra sair.');
   window._firebaseAuthReady=true;
   window.forceCloudSaveBloom=()=>{};
   window.isSignedInBloom=()=>false;
@@ -2646,10 +2660,15 @@ window.addEventListener('load',()=>{document.querySelectorAll('.btn-google').for
     if(syncTimer) clearTimeout(syncTimer);
     syncTimer=setTimeout(async ()=>{
       if(!navigator.onLine){ renderSyncStatus(); return; }
+      const logada = typeof window.isSignedInBloom==='function' && window.isSignedInBloom();
+      if(!logada){ renderSyncStatus(); return; }
       try{
         if(window.forceCloudSaveBloom) await window.forceCloudSaveBloom();
-        const m=getSyncMeta(); m.pending=0; m.lastSync=Date.now(); setSyncMeta(m);
-      }catch(e){ }
+        const m=getSyncMeta(); m.pending=0; m.lastSync=Date.now(); m.lastError=null; setSyncMeta(m);
+      }catch(e){
+        console.error('Falha ao sincronizar com a nuvem:', e);
+        const m=getSyncMeta(); m.lastError=(e&&e.code)||(e&&e.message)||'erro desconhecido'; m.lastErrorAt=Date.now(); setSyncMeta(m);
+      }
       renderSyncStatus();
     }, 400);
   }
@@ -2657,11 +2676,15 @@ window.addEventListener('load',()=>{document.querySelectorAll('.btn-google').for
   function renderSyncStatus(){
     const el=$('sync-status-mine'); if(!el) return;
     const m=getSyncMeta();
-    if(!navigator.onLine){ el.textContent='Sem conexao - salvando local, sincroniza quando voltar.'; el.className='sync-status warn'; return; }
-    if(m.pending>0){ el.textContent=m.pending+' alteracao(oes) pendente(s), sincronizando...'; el.className='sync-status warn'; return; }
-    if(m.lastSync){ const mins=Math.round((Date.now()-m.lastSync)/60000); el.textContent=mins<1?'Sincronizado agora':'Sincronizado ha '+mins+' min'; el.className='sync-status ok'; return; }
-    el.textContent='Aguardando primeira sincronizacao.'; el.className='sync-status';
+    const logada = typeof window.isSignedInBloom==='function' && window.isSignedInBloom();
+    if(!logada){ el.textContent='Não logada — dados salvos só neste aparelho. Entre com o Google pra sincronizar.'; el.className='sync-status warn'; return; }
+    if(!navigator.onLine){ el.textContent='Sem conexão — salvando local, sincroniza quando voltar.'; el.className='sync-status warn'; return; }
+    if(m.lastError){ el.textContent='Não consegui sincronizar (erro: '+esc(m.lastError)+'). Verifique a configuração do Firestore no console do Firebase.'; el.className='sync-status warn'; return; }
+    if(m.pending>0){ el.textContent=m.pending+' alteração(ões) pendente(s), sincronizando...'; el.className='sync-status warn'; return; }
+    if(m.lastSync){ const mins=Math.round((Date.now()-m.lastSync)/60000); el.textContent=mins<1?'Sincronizado agora':'Sincronizado há '+mins+' min'; el.className='sync-status ok'; return; }
+    el.textContent='Aguardando primeira sincronização.'; el.className='sync-status';
   }
+  window.renderSyncStatus=renderSyncStatus;
   window.renderSyncWarningBanner=function(){
     const el=$('sync-warning-banner'); if(!el) return;
     const logado = typeof window.isSignedInBloom==='function' && window.isSignedInBloom();
@@ -2690,6 +2713,18 @@ window.addEventListener('load',()=>{document.querySelectorAll('.btn-google').for
     $('cc-yes').onclick=executar;
     $('cc-yes').addEventListener('click', executar);
     $('cc-no').onclick=()=>{ m.classList.remove('show'); };
+    m.classList.add('show');
+  };
+  window.customConfirmAction=function(message, confirmLabel, onYes){
+    let m=$('bloom-modal');
+    if(!m){ m=document.createElement('div'); m.id='bloom-modal'; m.className='bloom-modal'; m.innerHTML='<div class="bloom-sheet"><div id="bloom-modal-content"></div></div>'; document.querySelector('.phone').appendChild(m); }
+    const box=$('bloom-modal-content');
+    box.innerHTML='<div class="sheet-title">Confirmar</div><p style="font-size:12px;color:#555;line-height:1.6;margin-bottom:16px">'+esc(message)+'</p><div class="form-actions"><button class="bloom-btn" id="ca-yes" type="button">'+esc(confirmLabel)+'</button><button class="bloom-btn ghost" id="ca-no" type="button">Cancelar</button></div>';
+    let ja=false;
+    const executar=()=>{ if(ja) return; ja=true; m.classList.remove('show'); onYes(); };
+    $('ca-yes').onclick=executar;
+    $('ca-yes').addEventListener('click', executar);
+    $('ca-no').onclick=()=>{ m.classList.remove('show'); };
     m.classList.add('show');
   };
 
@@ -3672,16 +3707,32 @@ window.addEventListener('load',()=>{document.querySelectorAll('.btn-google').for
   };
 
   function enhanceProfile(){
-    const scroll=document.querySelector('#screen-perfil .scroll'); if(!scroll || $('security-card-mine')) return;
-    const d=ensureSecurity();
-    const card=document.createElement('div'); card.className='card'; card.id='security-card-mine';
-    card.innerHTML='<p class="clabel">\uD83D\uDD12 PIN</p><div id="sync-status-mine" class="sync-status">Carregando status...</div>'
+    const scroll=document.querySelector('#screen-perfil .scroll'); if(!scroll) return;
+    let syncCard=$('sync-card-mine');
+    if(!syncCard){ syncCard=document.createElement('div'); syncCard.className='card'; syncCard.id='sync-card-mine'; scroll.appendChild(syncCard); }
+    const logada = typeof window.isSignedInBloom==='function' && window.isSignedInBloom();
+    syncCard.innerHTML='<p class="clabel">\u2601\uFE0F Sincronizacao</p><div id="sync-status-mine" class="sync-status">Carregando status...</div>'
       +'<div class="bloom-actions" style="margin-top:8px">'
+      +(logada
+        ? '<button class="bloom-btn ghost" onclick="forceCloudSaveBloom && forceCloudSaveBloom()">Forcar backup agora</button><button class="bloom-btn ghost" onclick="baixarBackupJSON()">Baixar backup .json</button><button class="bloom-btn ghost" style="color:var(--rose)" onclick="confirmSairConta()">Sair da conta Google</button>'
+        : '<button class="bloom-btn" onclick="signInGoogleBloom()">Entrar com Google</button><button class="bloom-btn ghost" onclick="baixarBackupJSON()">Baixar backup .json</button>')
+      +'</div>';
+
+    let card=$('security-card-mine');
+    if(!card){ card=document.createElement('div'); card.className='card'; card.id='security-card-mine'; scroll.appendChild(card); }
+    const d=ensureSecurity();
+    card.innerHTML='<p class="clabel">\uD83D\uDD12 PIN</p>'
+      +'<div class="bloom-actions">'
       +(d.security.enabled?'<button class="bloom-btn ghost" onclick="changePin()">Alterar PIN</button><button class="bloom-btn ghost" onclick="disablePin()">Desativar</button>':'<button class="bloom-btn" onclick="setupPin()">Ativar PIN</button>')
-      +'<button class="bloom-btn ghost" onclick="baixarBackupJSON()">Baixar backup .json</button></div>';
-    scroll.appendChild(card);
+      +'</div>';
     renderSyncStatus();
   }
+  window.confirmSairConta=function(){
+    window.customConfirmAction('Sair da conta Google? Seus dados continuam salvos neste aparelho, e outra pessoa pode entrar com o email dela em seguida.', 'Sim, sair', ()=>{
+      if(window.signOutGoogleBloom) window.signOutGoogleBloom();
+      setTimeout(enhanceProfile,300);
+    });
+  };
 
   function renderCurrentScreen(){
     const active=document.querySelector('.screen.active'); if(!active) return;
