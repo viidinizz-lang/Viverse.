@@ -1813,9 +1813,11 @@ if(configured()){
   };
   window._firebaseAuthReady=true;
   window.isSignedInBloom=()=>!!userBloom;
-  getRedirectResult(authBloom).then(result=>{ if(result && result.user){ if(window.goTo) window.goTo('home'); } }).catch(err=>{ console.error('Erro no retorno do login Google:', err); });
+  getRedirectResult(authBloom).catch(err=>{ console.error('Erro no retorno do login Google:', err); });
   onAuthStateChanged(authBloom,async u=>{
     userBloom=u; if(!u){status('não logada'); if(window.renderSyncWarningBanner) window.renderSyncWarningBanner(); return;}
+    const splashAtiva=document.getElementById('screen-splash')?.classList.contains('active');
+    if(splashAtiva && window.goTo) window.goTo('home');
     const el=document.getElementById('sync-status'); if(el) el.className='sync-status warn';
     status('logada como '+u.email+'; sincronizando...');
     const ref=doc(dbBloom,'users',u.uid,'app','viverseBloom');
