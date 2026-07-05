@@ -1871,22 +1871,8 @@ if(configured()){
     catch(err){ console.error('Erro ao sair da conta:', err); alert('Não consegui sair da conta. Tente de novo.'); }
   };
   window._realSignOutGoogleBloom=window.signOutGoogleBloom;
-  getRedirectResult(authBloom).then(result=>{
-    const tentouLogin = sessionStorage.getItem('viverse_tentando_login')==='1';
-    if(tentouLogin){
-      sessionStorage.removeItem('viverse_tentando_login');
-      if(result && result.user){
-        alert('Login OK: '+result.user.email+'. Sincronizando...');
-      } else {
-        alert('O login voltou do Google, mas sem resultado de usuário (resultado vazio).\n\nIsso geralmente é causado por: 1) o domínio do site não está na lista de domínios autorizados do Firebase, ou 2) o navegador está bloqueando o armazenamento necessário pro login (modo anônimo/rígido de privacidade).\n\nMe avisa que apareceu essa mensagem específica.');
-      }
-    }
-  }).catch(err=>{
-    console.error('Erro no retorno do login Google:', err);
-    sessionStorage.removeItem('viverse_tentando_login');
-    const codigo=(err&&err.code)||(err&&err.message)||'desconhecido';
-    alert('O login com o Google não foi concluído.\n\nCódigo do erro: '+codigo+'\n\nMande esse código exato pra gente resolver.');
-  });
+  sessionStorage.removeItem('viverse_tentando_login');
+  getRedirectResult(authBloom).catch(err=>{ console.error('Erro no retorno do login Google (redirect, secundário):', err); });
   onAuthStateChanged(authBloom,async u=>{
     userBloom=u; if(!u){status('não logada'); if(window.clearSyncError) window.clearSyncError(); if(window.renderSyncWarningBanner) window.renderSyncWarningBanner(); if(window.renderSyncStatus) window.renderSyncStatus(); return;}
     const splashAtiva=document.getElementById('screen-splash')?.classList.contains('active');
@@ -3880,4 +3866,4 @@ window.addEventListener('load',()=>{document.querySelectorAll('.btn-google').for
 </script>
 
 </body>
-</html>
+</html> 
