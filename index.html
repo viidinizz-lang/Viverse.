@@ -2720,6 +2720,12 @@ window.addEventListener('load',()=>{document.querySelectorAll('.btn-google').for
     }, 400);
   }
   window.addEventListener('online', attemptSync);
+  // Retry automático — se sobrar pendência (ex: app fechado no meio do processo), tenta de novo periodicamente
+  setInterval(()=>{
+    const m=getSyncMeta();
+    if(m.pending>0 && navigator.onLine){ attemptSync(); }
+    renderSyncStatus();
+  }, 8000);
   function renderSyncStatus(){
     const el=$('sync-status-mine'); if(!el) return;
     const m=getSyncMeta();
