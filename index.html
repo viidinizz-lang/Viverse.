@@ -1838,6 +1838,7 @@ function mergeData(local, remote){
 if(configured()){
   const app=initializeApp(firebaseConfigBloom); authBloom=getAuth(app); dbBloom=getFirestore(app);
   window._realSignInGoogleBloom=async()=>{
+    if(window.clearSyncError) window.clearSyncError();
     try{ await signInWithRedirect(authBloom,new GoogleAuthProvider()); }
     catch(err){ console.error('Erro ao iniciar login Google:', err); alert('Não consegui abrir o login do Google. Verifique sua conexão e tente de novo.\n\nDetalhe técnico: '+(err&&err.code||err&&err.message||'desconhecido')); }
   };
@@ -1848,9 +1849,13 @@ if(configured()){
     catch(err){ console.error('Erro ao sair da conta:', err); alert('Não consegui sair da conta. Tente de novo.'); }
   };
   window._realSignOutGoogleBloom=window.signOutGoogleBloom;
-  getRedirectResult(authBloom).catch(err=>{ console.error('Erro no retorno do login Google:', err); });
+  getRedirectResult(authBloom).catch(err=>{
+    console.error('Erro no retorno do login Google:', err);
+    const codigo=(err&&err.code)||(err&&err.message)||'desconhecido';
+    alert('O login com o Google não foi concluído.\n\nCódigo do erro: '+codigo+'\n\nMande esse código exato pra gente resolver.');
+  });
   onAuthStateChanged(authBloom,async u=>{
-    userBloom=u; if(!u){status('não logada'); if(window.renderSyncWarningBanner) window.renderSyncWarningBanner(); if(window.renderSyncStatus) window.renderSyncStatus(); return;}
+    userBloom=u; if(!u){status('não logada'); if(window.clearSyncError) window.clearSyncError(); if(window.renderSyncWarningBanner) window.renderSyncWarningBanner(); if(window.renderSyncStatus) window.renderSyncStatus(); return;}
     const splashAtiva=document.getElementById('screen-splash')?.classList.contains('active');
     if(splashAtiva && window.goTo) window.goTo('home');
     const el=document.getElementById('sync-status'); if(el) el.className='sync-status warn';
@@ -2708,6 +2713,7 @@ window.addEventListener('load',()=>{document.querySelectorAll('.btn-google').for
     el.textContent='Aguardando primeira sincronização.'; el.className='sync-status';
   }
   window.renderSyncStatus=renderSyncStatus;
+  window.clearSyncError=function(){ const m=getSyncMeta(); m.lastError=null; setSyncMeta(m); renderSyncStatus(); };
   window.renderSyncWarningBanner=function(){
     const el=$('sync-warning-banner'); if(!el) return;
     const logado = typeof window.isSignedInBloom==='function' && window.isSignedInBloom();
