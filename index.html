@@ -1800,6 +1800,12 @@ function sanitizeForFirestore(value, seen){
   seen = seen || new WeakSet();
   if(value === undefined) return null;
   if(value === null) return null;
+  if(typeof value === 'string'){
+    // Fotos em base64 (data:image/...) sozinhas ja estouram o limite de 1MB do Firestore.
+    // Ficam salvas normalmente no aparelho, so nao sobem pra nuvem.
+    if(value.startsWith('data:image')) return '[foto salva só neste aparelho]';
+    return value;
+  }
   if(typeof value !== 'object') return value;
   if(seen.has(value)) return null;
   seen.add(value);
@@ -1807,7 +1813,7 @@ function sanitizeForFirestore(value, seen){
     return value.map(item=>{
       const clean = sanitizeForFirestore(item, seen);
       // Firestore não aceita array dentro de array — embrulha num objeto se acontecer
-      return Array.isArray(clean) ? {__arr:clean} : clean;
+      return Array.isArray(clean) ? {arrWrap:clean} : clean;
     });
   }
   const out={};
@@ -3807,7 +3813,9 @@ window.addEventListener('load',()=>{document.querySelectorAll('.btn-google').for
       const m=getSyncMeta(); m.lastError=(err&&err.code)||(err&&err.message)||'erro desconhecido'; setSyncMeta(m);
       renderSyncStatus();
       if(btn){ btn.textContent=textoOriginal; btn.disabled=false; }
-      alert('Não consegui enviar o backup agora.\n\nErro: '+((err&&err.code)||(err&&err.message)||'desconhecido'));
+      setTimeout(()=>{
+        alert('Não consegui enviar o backup agora.\n\nErro: '+((err&&err.code)||(err&&err.message)||'desconhecido'));
+      }, 60);
     }
   };
   window.confirmSairConta=function(){
